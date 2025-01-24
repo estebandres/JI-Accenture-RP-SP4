@@ -48,7 +48,7 @@ public class ProductController {
         return productService.updateProductAttributesWithId(id, product);
     }
 
-    @PatchMapping("/batch-stock")
+    @PostMapping("/batch-stock")
     public List<Product> updateProductStock(@Valid @RequestBody List<StockPatchDTO> updates) throws InsufficientStockForBatchDeductionException {
         return productService.batchStockDeductions(updates);
     }
