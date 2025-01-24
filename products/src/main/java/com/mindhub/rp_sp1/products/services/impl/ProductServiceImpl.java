@@ -2,14 +2,18 @@ package com.mindhub.rp_sp1.products.services.impl;
 
 import com.mindhub.rp_sp1.products.dtos.ProductDTO;
 import com.mindhub.rp_sp1.products.dtos.PatchProductDTO;
+import com.mindhub.rp_sp1.products.dtos.StockPatchDTO;
+import com.mindhub.rp_sp1.products.exceptions.InsufficientStockForBatchDeductionException;
 import com.mindhub.rp_sp1.products.exceptions.ProductMultiGetNoResultsException;
 import com.mindhub.rp_sp1.products.exceptions.ProductNotFoundException;
 import com.mindhub.rp_sp1.products.models.Product;
 import com.mindhub.rp_sp1.products.services.ProductService;
 import com.mindhub.rp_sp1.products.repositories.ProductRepository;
+import jakarta.transaction.Transactional;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -90,4 +94,46 @@ public class ProductServiceImpl implements ProductService {
 
     return products;
     }
+
+    @Override
+    @Transactional
+    public List<Product> batchStockDeductions(List<StockPatchDTO> updates) throws InsufficientStockForBatchDeductionException {
+        List<Product> products = this.productRepository.findAllById(updates.stream().map(StockPatchDTO::productId).collect(Collectors.toList()));
+
+        if (stockIsAvailable(products, updates)) {
+            return batchStockDeductions(products, updates);
+        } else {
+            throw new InsufficientStockForBatchDeductionException();
+        }
+    }
+
+    public boolean stockIsAvailable(List<Product> products, List<StockPatchDTO> updates) {
+        for (Product product : products) {
+            for (StockPatchDTO update : updates) {
+                if (product.getId().equals(update.productId())) {
+                    if (product.getStock() < update.deduction()) {
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    }
+
+    public List<Product> batchStockDeductions(List<Product> products, List<StockPatchDTO> updates) {
+        for (Product product : products) {
+            for (StockPatchDTO update : updates) {
+                if (product.getId().equals(update.productId())) {
+                    if (product.getStock() >= update.deduction()) {
+                        int updatedStock = product.getStock() - update.deduction();
+                        product.setStock(updatedStock);
+                        productRepository.save(product);
+                    }
+                }
+            }
+        }
+        return products;
+    }
+
+
 }

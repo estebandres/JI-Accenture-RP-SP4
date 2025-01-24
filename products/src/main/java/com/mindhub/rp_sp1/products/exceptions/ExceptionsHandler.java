@@ -29,4 +29,9 @@ public class ExceptionsHandler {
     public ResponseEntity<String> handleProductMultiGetNoResultsException(ProductMultiGetNoResultsException ex) {
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
+
+    @ExceptionHandler(InsufficientStockForBatchDeductionException.class)
+    public ResponseEntity<String> handleInsufficientStockForBatchDeductionException(InsufficientStockForBatchDeductionException ex) {
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.BAD_REQUEST);
+    }
 }

@@ -2,6 +2,8 @@ package com.mindhub.rp_sp1.products.controllers;
 
 import com.mindhub.rp_sp1.products.dtos.PatchProductDTO;
 import com.mindhub.rp_sp1.products.dtos.ProductDTO;
+import com.mindhub.rp_sp1.products.dtos.StockPatchDTO;
+import com.mindhub.rp_sp1.products.exceptions.InsufficientStockForBatchDeductionException;
 import com.mindhub.rp_sp1.products.exceptions.ProductMultiGetNoResultsException;
 import com.mindhub.rp_sp1.products.exceptions.ProductNotFoundException;
 import com.mindhub.rp_sp1.products.models.Product;
@@ -44,6 +46,11 @@ public class ProductController {
     @PatchMapping("/{id}")
     public Product partialUpdateProduct(@PathVariable Long id, @Valid @RequestBody PatchProductDTO product) throws ProductNotFoundException {
         return productService.updateProductAttributesWithId(id, product);
+    }
+
+    @PatchMapping("/batch-stock")
+    public List<Product> updateProductStock(@Valid @RequestBody List<StockPatchDTO> updates) throws InsufficientStockForBatchDeductionException {
+        return productService.batchStockDeductions(updates);
     }
 
 }
