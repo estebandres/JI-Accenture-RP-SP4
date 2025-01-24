@@ -2,6 +2,7 @@ package com.mindhub.rp_sp1.users.services.impl;
 
 import com.mindhub.rp_sp1.users.dtos.PatchSiteUserDTO;
 import com.mindhub.rp_sp1.users.dtos.CreateSiteUserDTO;
+import com.mindhub.rp_sp1.users.exceptions.UserNotFoundByEmailException;
 import com.mindhub.rp_sp1.users.exceptions.UserNotFoundException;
 import com.mindhub.rp_sp1.users.models.RoleType;
 import com.mindhub.rp_sp1.users.models.SiteUser;
@@ -30,8 +31,8 @@ public class UserServiceImpl implements SiteUserService {
     }
 
     @Override
-    public SiteUser findByEmail(String email) {
-        return siteUserRepository.findByEmail(email);
+    public SiteUser findByEmail(String email) throws UserNotFoundByEmailException {
+        return siteUserRepository.findByEmail(email).orElseThrow(() -> new UserNotFoundByEmailException(email));
     }
 
     @Override

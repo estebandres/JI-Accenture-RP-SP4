@@ -2,6 +2,7 @@ package com.mindhub.rp_sp1.users.controllers;
 
 import com.mindhub.rp_sp1.users.dtos.PatchSiteUserDTO;
 import com.mindhub.rp_sp1.users.dtos.CreateSiteUserDTO;
+import com.mindhub.rp_sp1.users.exceptions.UserNotFoundByEmailException;
 import com.mindhub.rp_sp1.users.exceptions.UserNotFoundException;
 import com.mindhub.rp_sp1.users.models.SiteUser;
 import com.mindhub.rp_sp1.users.services.SiteUserService;
@@ -26,7 +27,7 @@ public class UserController {
     }
 
     @GetMapping
-    public List<SiteUser> getUserByEmail(@RequestParam(required = false) String email) {
+    public List<SiteUser> getUserByEmail(@RequestParam(required = false) String email) throws UserNotFoundByEmailException {
         if(email == null || email.isEmpty()) {
             return userService.findAll();
         }

@@ -35,4 +35,9 @@ public class ExceptionsHandler {
         );
         return ResponseEntity.badRequest().body(errors);
     }
+
+    @ExceptionHandler(UserNotFoundByEmailException.class)
+    public ResponseEntity<String> handleUserNotFoundByEmailException(UserNotFoundByEmailException exception) {
+        return new ResponseEntity<>(exception.getMessage(), HttpStatus.NOT_FOUND);
+    }
 }
