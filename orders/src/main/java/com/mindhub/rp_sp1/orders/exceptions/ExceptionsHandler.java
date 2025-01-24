@@ -40,4 +40,9 @@ public class ExceptionsHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
     }
 
+    @ExceptionHandler(InsufficientStockForOrderCompletionException.class)
+    public ResponseEntity<String> handleInsufficientStockForBatchDeductionException(InsufficientStockForOrderCompletionException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    }
+
 }

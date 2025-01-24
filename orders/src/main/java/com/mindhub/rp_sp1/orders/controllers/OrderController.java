@@ -2,11 +2,7 @@ package com.mindhub.rp_sp1.orders.controllers;
 
 import com.mindhub.rp_sp1.orders.dtos.OrderDTO;
 import com.mindhub.rp_sp1.orders.dtos.PatchOrderDTO;
-import com.mindhub.rp_sp1.orders.exceptions.OrderContainsNonexistentProductsException;
-import com.mindhub.rp_sp1.orders.exceptions.OrderNotFoundException;
-import com.mindhub.rp_sp1.orders.exceptions.SiteUserNotFoundException;
-import com.mindhub.rp_sp1.orders.exceptions.StockInsufficientException;
-import com.mindhub.rp_sp1.orders.models.Order;
+import com.mindhub.rp_sp1.orders.exceptions.*;
 import com.mindhub.rp_sp1.orders.services.OrderService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,5 +52,10 @@ public class OrderController {
     @DeleteMapping("/{id}")
     public void deleteOrder(@PathVariable Long id) throws OrderNotFoundException {
         orderService.deleteOrder(id);
+    }
+
+    @PostMapping("/{id}/confirm")
+    public OrderDTO confirmOrder(@PathVariable Long id) throws OrderNotFoundException, InsufficientStockForOrderCompletionException, NoResultsForBatchStockUpdateException {
+        return orderService.confirmOrder(id);
     }
 }

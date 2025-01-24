@@ -22,5 +22,7 @@ public record OrderDTO(
         @NotNull
         @NotEmpty
         List<OrderItemDTO> items,
-        OrderStatus status) implements Serializable {
+        OrderStatus status,
+        @Positive
+        Double total) implements Serializable {
 }

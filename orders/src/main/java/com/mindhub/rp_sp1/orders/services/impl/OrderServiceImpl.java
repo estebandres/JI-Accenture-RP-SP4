@@ -1,12 +1,10 @@
 package com.mindhub.rp_sp1.orders.services.impl;
 
 import com.mindhub.rp_sp1.orders.dtos.*;
-import com.mindhub.rp_sp1.orders.exceptions.OrderContainsNonexistentProductsException;
-import com.mindhub.rp_sp1.orders.exceptions.OrderNotFoundException;
-import com.mindhub.rp_sp1.orders.exceptions.SiteUserNotFoundException;
-import com.mindhub.rp_sp1.orders.exceptions.StockInsufficientException;
+import com.mindhub.rp_sp1.orders.exceptions.*;
 import com.mindhub.rp_sp1.orders.models.Order;
 import com.mindhub.rp_sp1.orders.models.OrderItem;
+import com.mindhub.rp_sp1.orders.models.OrderStatus;
 import com.mindhub.rp_sp1.orders.repositories.OrderItemRepository;
 import com.mindhub.rp_sp1.orders.repositories.OrderRepository;
 import com.mindhub.rp_sp1.orders.services.OrderService;
@@ -17,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Arrays;
 import java.util.List;
 
 @Service
@@ -41,13 +38,13 @@ public class OrderServiceImpl implements OrderService {
                 order.getId(),
                 order.getUserId(),
                 order.getItems().stream().map(orderItem -> new OrderItemDTO(orderItem.getId(), orderItem.getProductId(), orderItem.getQuantity())).toList(),
-                order.getStatus())).toList();
+                order.getStatus(),null)).toList();
     }
 
     @Override
     public OrderDTO getOrderById(Long id) throws OrderNotFoundException {
         Order order = orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
-        return new OrderDTO(order.getId(), order.getUserId(), order.getItems().stream().map(orderItem -> new OrderItemDTO(orderItem.getId(), orderItem.getProductId(), orderItem.getQuantity())).toList(), order.getStatus());
+        return new OrderDTO(order.getId(), order.getUserId(), order.getItems().stream().map(orderItem -> new OrderItemDTO(orderItem.getId(), orderItem.getProductId(), orderItem.getQuantity())).toList(), order.getStatus(),null);
     }
 
     @Override
@@ -78,8 +75,7 @@ public class OrderServiceImpl implements OrderService {
                                 orderItem.getProductId(),
                                 orderItem.getQuantity()
                         )).toList(),
-                savedOrder.getStatus()
-        );
+                savedOrder.getStatus(),null);
     }
 
     @Override
@@ -132,8 +128,7 @@ public class OrderServiceImpl implements OrderService {
                                             orderItem.getProductId(),
                                             orderItem.getQuantity()
                                     )).toList(),
-                            savedOrder.getStatus()
-                    );
+                            savedOrder.getStatus(),null);
                 }
             } else {
                 throw new SiteUserNotFoundException(email);
@@ -186,8 +181,7 @@ public class OrderServiceImpl implements OrderService {
                                 orderItem.getProductId(),
                                 orderItem.getQuantity()
                         )).toList(),
-                savedOrder.getStatus()
-        );
+                savedOrder.getStatus(),null);
     }
 
     @Override
@@ -220,13 +214,56 @@ public class OrderServiceImpl implements OrderService {
                                 orderItem.getId(),
                                 orderItem.getProductId(),
                                 orderItem.getQuantity())).toList(),
-                savedOrder.getStatus());
+                savedOrder.getStatus(),null);
     }
 
     @Override
     public void deleteOrder(Long id) throws OrderNotFoundException {
         Order order = orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
         orderRepository.deleteById(id);
+    }
+
+    @Override
+    public OrderDTO confirmOrder(Long id) throws
+            OrderNotFoundException,
+            InsufficientStockForOrderCompletionException,
+            NoResultsForBatchStockUpdateException {
+        Order order = orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+        List<StockPatchDTO> stockPatchDTOS = order.getItems().stream().map(orderItem -> new StockPatchDTO(orderItem.getProductId(), orderItem.getQuantity())).toList();
+        ProductDTO[] products;
+        try{
+            products = restTemplate.postForObject(productsServiceUrl + "/products/batch-stock", stockPatchDTOS, ProductDTO[].class);
+        } catch (HttpClientErrorException.BadRequest ex){
+            throw new InsufficientStockForOrderCompletionException();
+        }
+        if (products == null || products.length == 0) {
+            throw new NoResultsForBatchStockUpdateException();
+        }
+        double totalAmount = calculateTotalAmount(order,products);
+        order.setStatus(OrderStatus.COMPLETED);
+        Order savedOrder = orderRepository.save(order);
+        return new OrderDTO(
+                savedOrder.getId(),
+                savedOrder.getUserId(),
+                savedOrder.getItems().stream()
+                        .map(orderItem -> new OrderItemDTO(
+                                orderItem.getId(),
+                                orderItem.getProductId(),
+                                orderItem.getQuantity())).toList(),
+                savedOrder.getStatus(),
+                totalAmount);
+    }
+
+    private double calculateTotalAmount(Order order, ProductDTO[] products) {
+        double totalAmount = 0.0;
+        for (OrderItem item : order.getItems()) {
+            for (ProductDTO product : products) {
+                if (item.getProductId().equals(product.id())) {
+                    totalAmount+= product.price() * item.getQuantity();
+                }
+            }
+        }
+        return totalAmount;
     }
 
 }
