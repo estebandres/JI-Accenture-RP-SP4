@@ -24,4 +24,20 @@ public class ExceptionsHandler {
         );
         return ResponseEntity.badRequest().body(errors);
     }
+
+    @ExceptionHandler(SiteUserNotFoundException.class)
+    public ResponseEntity<String> handleSiteUserNotFoundException(SiteUserNotFoundException ex) {
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(OrderContainsNonexistentProductsException.class)
+    public ResponseEntity<String> handleOrderContainsNonexistentProductsException(OrderContainsNonexistentProductsException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    }
+
+    @ExceptionHandler(StockInsufficientException.class)
+    public ResponseEntity<String> handleStockInsufficientException(StockInsufficientException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
+    }
+
 }

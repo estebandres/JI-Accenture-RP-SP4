@@ -2,6 +2,7 @@ package com.mindhub.rp_sp1.orders.dtos;
 
 import com.mindhub.rp_sp1.orders.models.OrderStatus;
 import jakarta.annotation.Nullable;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
@@ -15,10 +16,11 @@ public record OrderDTO(
         @Nullable
         @Positive
         Long id,
-        @NotNull
+        @Nullable
         @Positive
         Long userId,
-        @Nullable
+        @NotNull
+        @NotEmpty
         List<OrderItemDTO> items,
         OrderStatus status) implements Serializable {
 }

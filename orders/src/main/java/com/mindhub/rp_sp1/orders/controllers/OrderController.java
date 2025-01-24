@@ -2,8 +2,10 @@ package com.mindhub.rp_sp1.orders.controllers;
 
 import com.mindhub.rp_sp1.orders.dtos.OrderDTO;
 import com.mindhub.rp_sp1.orders.dtos.PatchOrderDTO;
+import com.mindhub.rp_sp1.orders.exceptions.OrderContainsNonexistentProductsException;
 import com.mindhub.rp_sp1.orders.exceptions.OrderNotFoundException;
 import com.mindhub.rp_sp1.orders.exceptions.SiteUserNotFoundException;
+import com.mindhub.rp_sp1.orders.exceptions.StockInsufficientException;
 import com.mindhub.rp_sp1.orders.models.Order;
 import com.mindhub.rp_sp1.orders.services.OrderService;
 import jakarta.validation.Valid;
@@ -29,7 +31,10 @@ public class OrderController {
     }
 
     @PostMapping
-    public OrderDTO createOrder(@Valid @RequestBody OrderDTO orderDto, @RequestParam(required = false) String email) throws SiteUserNotFoundException {
+    public OrderDTO createOrder(@Valid @RequestBody OrderDTO orderDto, @RequestParam(required = false) String email)
+            throws SiteUserNotFoundException,
+            OrderContainsNonexistentProductsException,
+            StockInsufficientException {
         if (email != null && !email.isEmpty()) {
             System.out.println("With email: " + email);
             return orderService.createOrder(orderDto, email);
