@@ -2,6 +2,7 @@ package com.mindhub.rp_sp1.products.controllers;
 
 import com.mindhub.rp_sp1.products.dtos.PatchProductDTO;
 import com.mindhub.rp_sp1.products.dtos.ProductDTO;
+import com.mindhub.rp_sp1.products.exceptions.ProductMultiGetNoResultsException;
 import com.mindhub.rp_sp1.products.exceptions.ProductNotFoundException;
 import com.mindhub.rp_sp1.products.models.Product;
 import com.mindhub.rp_sp1.products.services.ProductService;
@@ -18,8 +19,11 @@ public class ProductController {
     private ProductService productService;
 
     @GetMapping
-    public List<Product> getProducts() {
-        return productService.getAllProducts();
+    public List<Product> getProducts(@RequestParam(required = false) String ids) throws ProductMultiGetNoResultsException {
+        if (ids == null || ids.isEmpty()) {
+            return productService.getAllProducts();
+        }
+        return productService.getAllProductsWithIds(ids);
     }
 
     @GetMapping("/{id}")

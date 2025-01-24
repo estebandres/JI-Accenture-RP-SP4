@@ -2,6 +2,7 @@ package com.mindhub.rp_sp1.products.services;
 
 import com.mindhub.rp_sp1.products.dtos.ProductDTO;
 import com.mindhub.rp_sp1.products.dtos.PatchProductDTO;
+import com.mindhub.rp_sp1.products.exceptions.ProductMultiGetNoResultsException;
 import com.mindhub.rp_sp1.products.exceptions.ProductNotFoundException;
 import com.mindhub.rp_sp1.products.models.Product;
 
@@ -16,4 +17,6 @@ public interface ProductService {
     List<Product> getAllProducts();
 
     Product getProductWithId(Long id) throws ProductNotFoundException;
+
+    List<Product> getAllProductsWithIds(String ids) throws ProductMultiGetNoResultsException;
 }

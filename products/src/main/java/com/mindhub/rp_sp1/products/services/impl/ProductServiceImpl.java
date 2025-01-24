@@ -2,6 +2,7 @@ package com.mindhub.rp_sp1.products.services.impl;
 
 import com.mindhub.rp_sp1.products.dtos.ProductDTO;
 import com.mindhub.rp_sp1.products.dtos.PatchProductDTO;
+import com.mindhub.rp_sp1.products.exceptions.ProductMultiGetNoResultsException;
 import com.mindhub.rp_sp1.products.exceptions.ProductNotFoundException;
 import com.mindhub.rp_sp1.products.models.Product;
 import com.mindhub.rp_sp1.products.services.ProductService;
@@ -9,7 +10,9 @@ import com.mindhub.rp_sp1.products.repositories.ProductRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class ProductServiceImpl implements ProductService {
@@ -71,5 +74,20 @@ public class ProductServiceImpl implements ProductService {
     @Override
     public Product getProductWithId(Long id) throws ProductNotFoundException {
         return productRepository.findById(id).orElseThrow(() -> new ProductNotFoundException(id));
+    }
+
+    @Override
+    public List<Product> getAllProductsWithIds(String ids) throws ProductMultiGetNoResultsException {
+    List<Long> idList = Arrays.stream(ids.split(","))
+                              .map(Long::parseLong)
+                              .collect(Collectors.toList());
+
+    List<Product> products = productRepository.findAllById(idList);
+
+    if (products.isEmpty()) {
+        throw new ProductMultiGetNoResultsException();
+    }
+
+    return products;
     }
 }

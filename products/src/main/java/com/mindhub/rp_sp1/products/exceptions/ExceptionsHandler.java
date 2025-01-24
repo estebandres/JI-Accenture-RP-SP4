@@ -24,4 +24,9 @@ public class ExceptionsHandler {
         );
         return ResponseEntity.badRequest().body(errors);
     }
+
+    @ExceptionHandler(ProductMultiGetNoResultsException.class)
+    public ResponseEntity<String> handleProductMultiGetNoResultsException(ProductMultiGetNoResultsException ex) {
+        return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+    }
 }
