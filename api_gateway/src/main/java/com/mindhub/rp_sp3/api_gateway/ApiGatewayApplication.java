@@ -1,17 +1,15 @@
-package com.mindhub.rp_sp1.orders;
+package com.mindhub.rp_sp3.api_gateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
-
 @SpringBootApplication
-//@EnableEurekaClient
 @EnableDiscoveryClient
-public class OrdersApplication {
+public class ApiGatewayApplication {
 
 	public static void main(String[] args) {
-		SpringApplication.run(OrdersApplication.class, args);
+		SpringApplication.run(ApiGatewayApplication.class, args);
 	}
 
 }
