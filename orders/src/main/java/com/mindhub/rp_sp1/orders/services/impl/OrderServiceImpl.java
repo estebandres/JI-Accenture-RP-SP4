@@ -1,5 +1,7 @@
 package com.mindhub.rp_sp1.orders.services.impl;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mindhub.rp_sp1.orders.RabbitConfig;
 import com.mindhub.rp_sp1.orders.dtos.*;
 import com.mindhub.rp_sp1.orders.exceptions.*;
 import com.mindhub.rp_sp1.orders.models.Order;
@@ -9,6 +11,11 @@ import com.mindhub.rp_sp1.orders.repositories.OrderItemRepository;
 import com.mindhub.rp_sp1.orders.repositories.OrderRepository;
 import com.mindhub.rp_sp1.orders.services.OrderService;
 import jakarta.transaction.Transactional;
+import org.springframework.amqp.core.Message;
+import org.springframework.amqp.core.MessageBuilder;
+import org.springframework.amqp.core.MessageProperties;
+import org.springframework.amqp.core.MessagePropertiesBuilder;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -31,6 +38,17 @@ public class OrderServiceImpl implements OrderService {
 
     @Value("${products.service.url}")
     private String productsServiceUrl;
+
+    @Autowired
+    private final RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    public OrderServiceImpl(RabbitTemplate rabbitTemplate) {
+        this.rabbitTemplate = rabbitTemplate;
+    }
+
 
     @Override
     public List<OrderDTO> getAllOrders() {
@@ -136,7 +154,25 @@ public class OrderServiceImpl implements OrderService {
         } else {
             throw new SiteUserNotFoundException(email);
         }
+        sendToRabbit(responseOrderDTO);
         return responseOrderDTO;
+    }
+
+    private void sendToRabbit(OrderDTO responseOrderDTO) {
+        String orderDTOJson;
+        try {
+            orderDTOJson = new ObjectMapper().writeValueAsString(responseOrderDTO);
+        }catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        rabbitTemplate.convertAndSend(
+                RabbitConfig.ORDER_QUEUE_EXCHANGE,
+                RabbitConfig.ORDERS_ROUTING_KEY,
+                orderDTOJson,
+                message -> {
+                    message.getMessageProperties().setContentType(MessageProperties.CONTENT_TYPE_JSON);
+                    return message;
+                });
     }
 
     public boolean stockIsInsufficient(ProductDTO[] products, List<OrderItemDTO> orderItems) {
@@ -242,7 +278,7 @@ public class OrderServiceImpl implements OrderService {
         double totalAmount = calculateTotalAmount(order,products);
         order.setStatus(OrderStatus.COMPLETED);
         Order savedOrder = orderRepository.save(order);
-        return new OrderDTO(
+        OrderDTO responseOrderDTO = new OrderDTO(
                 savedOrder.getId(),
                 savedOrder.getUserId(),
                 savedOrder.getItems().stream()
@@ -252,6 +288,8 @@ public class OrderServiceImpl implements OrderService {
                                 orderItem.getQuantity())).toList(),
                 savedOrder.getStatus(),
                 totalAmount);
+        sendToRabbit(responseOrderDTO);
+        return responseOrderDTO;
     }
 
     private double calculateTotalAmount(Order order, ProductDTO[] products) {
