@@ -2,6 +2,9 @@ package com.mindhub.rp_sp1.users.services.impl;
 
 import com.mindhub.rp_sp1.users.dtos.PatchSiteUserDTO;
 import com.mindhub.rp_sp1.users.dtos.CreateSiteUserDTO;
+import com.mindhub.rp_sp1.users.dtos.RegisterUserDTO;
+import com.mindhub.rp_sp1.users.dtos.SiteUserDto;
+import com.mindhub.rp_sp1.users.exceptions.UserAlreadyExistsException;
 import com.mindhub.rp_sp1.users.exceptions.UserNotFoundByEmailException;
 import com.mindhub.rp_sp1.users.exceptions.UserNotFoundException;
 import com.mindhub.rp_sp1.users.models.RoleType;
@@ -10,6 +13,7 @@ import com.mindhub.rp_sp1.users.repositories.SiteUserRepository;
 import com.mindhub.rp_sp1.users.services.SiteUserService;
 import org.apache.coyote.BadRequestException;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -19,6 +23,13 @@ import java.util.List;
 public class UserServiceImpl implements SiteUserService {
     @Autowired
     private SiteUserRepository siteUserRepository;
+
+    @Autowired
+    private final PasswordEncoder passwordEncoder;
+
+    public UserServiceImpl(PasswordEncoder passwordEncoder) {
+        this.passwordEncoder = passwordEncoder;
+    }
 
     @Override
     public List<SiteUser> findAll() {
@@ -91,5 +102,19 @@ public class UserServiceImpl implements SiteUserService {
     public void deleteUserWithId(Long id) throws UserNotFoundException {
         SiteUser siteUser = siteUserRepository.findById(id).orElseThrow(() -> new UserNotFoundException(id));
         siteUserRepository.deleteById(id);
+    }
+
+    @Override
+    public SiteUserDto registerNewUser(RegisterUserDTO registerUserDTO) throws UserAlreadyExistsException {
+        if(siteUserRepository.existsAppUserByEmail(registerUserDTO.email())){
+            throw new UserAlreadyExistsException(registerUserDTO.email());
+        }
+        SiteUser user = new SiteUser();
+        user.setEmail(registerUserDTO.email());
+        user.setUsername(registerUserDTO.username());
+        user.setPassword(passwordEncoder.encode(registerUserDTO.password()));
+        SiteUser savedUser = siteUserRepository.save(user);
+
+        return new SiteUserDto(savedUser);
     }
 }
