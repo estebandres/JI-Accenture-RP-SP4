@@ -11,6 +11,7 @@ import com.mindhub.rp_sp1.orders.repositories.OrderItemRepository;
 import com.mindhub.rp_sp1.orders.repositories.OrderRepository;
 import com.mindhub.rp_sp1.orders.services.OrderService;
 import jakarta.transaction.Transactional;
+import org.slf4j.Logger;
 import org.springframework.amqp.core.Message;
 import org.springframework.amqp.core.MessageBuilder;
 import org.springframework.amqp.core.MessageProperties;
@@ -18,6 +19,7 @@ import org.springframework.amqp.core.MessagePropertiesBuilder;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cloud.logging.LoggingRebinder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
@@ -26,6 +28,7 @@ import java.util.List;
 
 @Service
 public class OrderServiceImpl implements OrderService {
+    private static final Logger LOGGER = org.slf4j.LoggerFactory.getLogger(OrderServiceImpl.class);
     @Autowired
     private OrderRepository orderRepository;
     @Autowired
@@ -44,6 +47,8 @@ public class OrderServiceImpl implements OrderService {
 
     @Autowired
     private ObjectMapper objectMapper;
+    @Autowired
+    private LoggingRebinder loggingRebinder;
 
     public OrderServiceImpl(RabbitTemplate rabbitTemplate) {
         this.rabbitTemplate = rabbitTemplate;
@@ -84,6 +89,7 @@ public class OrderServiceImpl implements OrderService {
                     .toList());
         }
         Order savedOrder =  orderRepository.save(order);
+        LOGGER.info("Order created with id: {}", savedOrder.getId());
         return new OrderDTO(
                 savedOrder.getId(),
                 savedOrder.getUserId(),
@@ -105,6 +111,7 @@ public class OrderServiceImpl implements OrderService {
         try {
             users = restTemplate.getForObject(url, SiteUserDto[].class);
         } catch (HttpClientErrorException.NotFound ex){
+            LOGGER.error("User with email {} not found", email);
             throw new SiteUserNotFoundException(email);
         }
 
@@ -121,9 +128,11 @@ public class OrderServiceImpl implements OrderService {
                 ProductDTO[] products = restTemplate.getForObject(productsServiceUrl + "/products?ids=" + productIds, ProductDTO[].class);
                 if (products != null && products.length > 0) {
                     if (products.length != orderDto.items().size()) {
+                        LOGGER.error("Order {} contains non-existent products", orderDto.id());
                         throw new OrderContainsNonexistentProductsException();
                     }
                     if(stockIsInsufficient(products, orderDto.items())) {
+                        LOGGER.error("Stock is insufficient for Order {}", orderDto.id());
                         throw new StockInsufficientException();
                     }
                     Order newOrder = new Order();
@@ -149,11 +158,14 @@ public class OrderServiceImpl implements OrderService {
                             savedOrder.getStatus(),null);
                 }
             } else {
+                LOGGER.error("User with email {} was retrieved as a null value.", email);
                 throw new SiteUserNotFoundException(email);
             }
         } else {
+            LOGGER.error("User with email {} produces an empty array of users", email);
             throw new SiteUserNotFoundException(email);
         }
+        LOGGER.info("Order successfully created: {}", responseOrderDTO);
         sendToRabbit(responseOrderDTO);
         return responseOrderDTO;
     }
@@ -163,6 +175,7 @@ public class OrderServiceImpl implements OrderService {
         try {
             orderDTOJson = new ObjectMapper().writeValueAsString(responseOrderDTO);
         }catch (Exception e) {
+            LOGGER.error("Error while converting OrderDTO to JSON", e);
             throw new RuntimeException(e);
         }
         rabbitTemplate.convertAndSend(
@@ -192,7 +205,10 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderDTO updateOrder(Long id, OrderDTO orderDto) throws OrderNotFoundException {
-        Order order = orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+        Order order = orderRepository.findById(id).orElseThrow(() -> {
+            LOGGER.error("Order with id {} not found", id);
+            return new OrderNotFoundException(id);
+        });
         order.setUserId(orderDto.userId());
         if (orderDto.status() != null) {
             order.setStatus(orderDto.status());
@@ -223,7 +239,10 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional
     public OrderDTO orderPartialUpdate(Long id, PatchOrderDTO patchOrderDto) throws OrderNotFoundException {
-        Order order = orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+        Order order = orderRepository.findById(id).orElseThrow(() -> {
+            LOGGER.error("Order with id {} not found", id);
+            return new OrderNotFoundException(id);
+        });
         if (patchOrderDto.userId() != null) {
             order.setUserId(patchOrderDto.userId());
         }
@@ -255,7 +274,10 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     public void deleteOrder(Long id) throws OrderNotFoundException {
-        Order order = orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+        Order order = orderRepository.findById(id).orElseThrow(() -> {
+            LOGGER.error("Order with id {} not found", id);
+            return new OrderNotFoundException(id);
+        });
         orderRepository.deleteById(id);
     }
 
@@ -264,15 +286,20 @@ public class OrderServiceImpl implements OrderService {
             OrderNotFoundException,
             InsufficientStockForOrderCompletionException,
             NoResultsForBatchStockUpdateException {
-        Order order = orderRepository.findById(id).orElseThrow(() -> new OrderNotFoundException(id));
+        Order order = orderRepository.findById(id).orElseThrow(() -> {
+            LOGGER.error("Order with id {} not found", id);
+            return new OrderNotFoundException(id);
+        });
         List<StockPatchDTO> stockPatchDTOS = order.getItems().stream().map(orderItem -> new StockPatchDTO(orderItem.getProductId(), orderItem.getQuantity())).toList();
         ProductDTO[] products;
         try{
             products = restTemplate.postForObject(productsServiceUrl + "/products/batch-stock", stockPatchDTOS, ProductDTO[].class);
         } catch (HttpClientErrorException.BadRequest ex){
+            LOGGER.error("Stock is insufficient for Order {}", id);
             throw new InsufficientStockForOrderCompletionException();
         }
         if (products == null || products.length == 0) {
+            LOGGER.error("No results for batch stock update for Order {}", id);
             throw new NoResultsForBatchStockUpdateException();
         }
         double totalAmount = calculateTotalAmount(order,products);
@@ -289,6 +316,7 @@ public class OrderServiceImpl implements OrderService {
                 savedOrder.getStatus(),
                 totalAmount);
         sendToRabbit(responseOrderDTO);
+        LOGGER.info("Order successfully completed: {}", responseOrderDTO);
         return responseOrderDTO;
     }
 
