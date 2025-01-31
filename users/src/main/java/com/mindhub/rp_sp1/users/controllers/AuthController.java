@@ -1,11 +1,13 @@
 package com.mindhub.rp_sp1.users.controllers;
 
 import com.mindhub.rp_sp1.users.configs.security.JwtUtils;
+import com.mindhub.rp_sp1.users.dtos.GetUserDTO;
 import com.mindhub.rp_sp1.users.dtos.RegisterUserDTO;
 import com.mindhub.rp_sp1.users.dtos.SiteUserDto;
 import com.mindhub.rp_sp1.users.dtos.UserLoginDTO;
 import com.mindhub.rp_sp1.users.exceptions.UserAlreadyExistsException;
 import com.mindhub.rp_sp1.users.services.SiteUserService;
+import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -30,7 +32,7 @@ public class AuthController {
     private JwtUtils jwtUtils;
 
     @PostMapping("/login")
-    public ResponseEntity<String> authenticateUser(@RequestBody UserLoginDTO loginRequest) {
+    public ResponseEntity<String> authenticateUser(@RequestBody @Valid UserLoginDTO loginRequest) {
         System.out.println("STEVE REPORT: authenticateUser loginRequest: " + loginRequest);
         Authentication authentication = authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
@@ -39,12 +41,12 @@ public class AuthController {
                 )
         );
         SecurityContextHolder.getContext().setAuthentication(authentication);
-        String jwt = jwtUtils.generateToken(authentication.getName());
+        String jwt = jwtUtils.generateToken(authentication);
         return ResponseEntity.ok(jwt);
     }
 
     @PostMapping("/register")
-    public SiteUserDto createUser(@RequestBody RegisterUserDTO registerUserDTO) throws UserAlreadyExistsException {
+    public GetUserDTO createUser(@RequestBody @Valid RegisterUserDTO registerUserDTO) throws UserAlreadyExistsException {
         return siteUserService.registerNewUser(registerUserDTO);
     }
 }

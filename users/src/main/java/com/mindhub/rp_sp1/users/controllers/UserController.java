@@ -1,5 +1,6 @@
 package com.mindhub.rp_sp1.users.controllers;
 
+import com.mindhub.rp_sp1.users.dtos.GetUserDTO;
 import com.mindhub.rp_sp1.users.dtos.PatchSiteUserDTO;
 import com.mindhub.rp_sp1.users.dtos.CreateSiteUserDTO;
 import com.mindhub.rp_sp1.users.exceptions.UserNotFoundByEmailException;
@@ -22,12 +23,12 @@ public class UserController {
     SiteUserService userService;
 
     @GetMapping("/{id}")
-    public SiteUser getUserById(@PathVariable Long id) {
+    public GetUserDTO getUserById(@PathVariable Long id) {
         return userService.findById(id);
     }
 
     @GetMapping
-    public List<SiteUser> getUserByEmail(@RequestParam(required = false) String email) throws UserNotFoundByEmailException {
+    public List<GetUserDTO> getUserByEmail(@RequestParam(required = false) String email) throws UserNotFoundByEmailException {
         if(email == null || email.isEmpty()) {
             return userService.findAll();
         }
@@ -35,17 +36,17 @@ public class UserController {
     }
 
     @PostMapping
-    public SiteUser createUser(@Valid @RequestBody CreateSiteUserDTO userDTO) {
+    public GetUserDTO createUser(@Valid @RequestBody CreateSiteUserDTO userDTO) {
         return userService.createUser(userDTO);
     }
 
     @PutMapping("/{id}")
-    public SiteUser updateUser(@PathVariable Long id, @Valid@RequestBody CreateSiteUserDTO userDTO) throws UserNotFoundException, BadRequestException {
+    public GetUserDTO updateUser(@PathVariable Long id, @Valid@RequestBody CreateSiteUserDTO userDTO) throws UserNotFoundException, BadRequestException {
         return userService.updateUser(id, userDTO);
     }
 
     @PatchMapping("/{id}")
-    public SiteUser updateSomeAttributes(@PathVariable Long id, @Valid @RequestBody PatchSiteUserDTO userDTO) throws UserNotFoundException, BadRequestException {
+    public GetUserDTO updateSomeAttributes(@PathVariable Long id, @Valid @RequestBody PatchSiteUserDTO userDTO) throws UserNotFoundException, BadRequestException {
         return userService.updateSomeAttributes(id, userDTO);
     }
 
